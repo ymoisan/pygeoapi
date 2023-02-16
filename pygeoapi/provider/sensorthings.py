@@ -35,7 +35,7 @@ from pygeoapi.provider.base import (BaseProvider, ProviderQueryError,
                                     ProviderConnectionError,
                                     ProviderItemNotFoundError)
 from json.decoder import JSONDecodeError
-from pygeoapi.util import yaml_load, url_join
+from pygeoapi.util import yaml_load, url_join, get_base_url
 
 LOGGER = logging.getLogger(__name__)
 
@@ -184,7 +184,7 @@ class SensorThingsProvider(BaseProvider):
         import os
         with open(os.getenv('PYGEOAPI_CONFIG'), encoding='utf8') as fh:
             CONFIG = yaml_load(fh)
-            self._rel_link = CONFIG['server']['url']
+            self._rel_link = get_base_url(CONFIG)
 
             # Validate intra-links
             for (name, rs) in CONFIG['resources'].items():
