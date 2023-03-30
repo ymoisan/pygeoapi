@@ -36,7 +36,6 @@ from requests import Session
 
 from pygeoapi.provider.base import (BaseProvider, ProviderQueryError,
                                     ProviderConnectionError)
-from json.decoder import JSONDecodeError
 from pygeoapi.util import (yaml_load, url_join, get_base_url,
                            crs_transform, get_provider_default)
 

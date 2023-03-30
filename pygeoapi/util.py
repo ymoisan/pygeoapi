@@ -55,15 +55,14 @@ from shapely.geometry import (
     MultiLineString,
     MultiPoint,
     MultiPolygon,
-    Point,
     Polygon,
+    Point,
     shape as geojson_to_geom,
     mapping as geom_to_geojson,
 )
 import yaml
 from babel.support import Translations
 from jinja2 import Environment, FileSystemLoader, select_autoescape
-from shapely.geometry import Polygon
 import pyproj
 from pyproj.exceptions import CRSError
 from requests import Session

@@ -237,7 +237,7 @@ def get_oas_30(cfg):
                 {'$ref': '#/components/parameters/lang'}
             ],
             'responses': {
-                '200': {'$ref': f"{OPENAPI_YAML['oapif-1']}#/components/responses/LandingPage"},  # noqa
+                '200': {'$ref': f"{OPENAPI_YAML['oapif-1']}#/components/responses/ConformanceDeclaration"},  # noqa
                 '400': {'$ref': f"{OPENAPI_YAML['oapif-1']}#/components/responses/InvalidParameter"},  # noqa
                 '500': {'$ref': f"{OPENAPI_YAML['oapif-1']}#/components/responses/ServerError"}  # noqa
             }
@@ -255,7 +255,7 @@ def get_oas_30(cfg):
                 {'$ref': '#/components/parameters/lang'}
             ],
             'responses': {
-                '200': {'$ref': f"{OPENAPI_YAML['oapif-1']}#/components/responses/LandingPage"},  # noqa
+                '200': {'$ref': f"{OPENAPI_YAML['oapif-1']}#/components/responses/Collections"},  # noqa
                 '400': {'$ref': f"{OPENAPI_YAML['oapif-1']}#/components/responses/InvalidParameter"},  # noqa
                 '500': {'$ref': f"{OPENAPI_YAML['oapif-1']}#/components/responses/ServerError"}  # noqa
             }
@@ -343,6 +343,24 @@ def get_oas_30(cfg):
                 'schema': {
                     'type': 'boolean',
                     'default': False
+                }
+            },
+            "bbox": {
+                "name": "bbox",
+                "in": "query",
+                "description": "Only features that have a geometry that intersects the bounding box are selected."  # noqa
+                               "The bounding box is provided as four or six numbers, depending on whether the "  # noqa
+                               "coordinate reference system includes a vertical axis (height or depth).",  # noqa
+                "required": False,
+                "style": "form",
+                "explode": False,
+                "schema": {
+                    "type": "array",
+                    "minItems": 4,
+                    "maxItems": 6,
+                    "items": {
+                        "type": "number"
+                    }
                 }
             },
             'bbox-crs': {
@@ -515,7 +533,7 @@ def get_oas_30(cfg):
                     'parameters': [
                         items_f,
                         items_l,
-                        {'$ref': f"{OPENAPI_YAML['oapif-1']}#/components/parameters/bbox"},  # noqa
+                        {'$ref': '#/components/parameters/bbox'},
                         {'$ref': f"{OPENAPI_YAML['oapif-1']}#/components/parameters/limit"},  # noqa
                         {'$ref': f"{OPENAPI_YAML['oapif-2']}#/components/parameters/crs"},  # noqa
                         {'$ref': f"{OPENAPI_YAML['oapif-2']}#/components/parameters/bbox-crs"},  # noqa
@@ -735,7 +753,7 @@ def get_oas_30(cfg):
                     'parameters': [
                         items_f,
                         items_l,
-                        {'$ref': f"{OPENAPI_YAML['oapif-1']}#/components/parameters/bbox"},  # noqa
+                        {'$ref': '#/components/parameters/bbox'},
                         {'$ref': f"{OPENAPI_YAML['oapif-2']}#/components/parameters/bbox-crs"},  # noqa
                     ],
                     'responses': {
@@ -984,7 +1002,7 @@ def get_oas_30(cfg):
                     'tags': [k],
                     'operationId': 'getMap',
                     'parameters': [
-                        {'$ref': f"{OPENAPI_YAML['oapif-1']}#/components/parameters/bbox"},  # noqa
+                        {'$ref': '#/components/parameters/bbox'},
                         {'$ref': f"{OPENAPI_YAML['oapif-1']}#/components/parameters/datetime"},  # noqa
                         {
                             'name': 'width',
