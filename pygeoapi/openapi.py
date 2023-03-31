@@ -345,36 +345,64 @@ def get_oas_30(cfg):
                     'default': False
                 }
             },
-            "bbox": {
-                "name": "bbox",
-                "in": "query",
-                "description": "Only features that have a geometry that intersects the bounding box are selected."  # noqa
-                               "The bounding box is provided as four or six numbers, depending on whether the "  # noqa
-                               "coordinate reference system includes a vertical axis (height or depth).",  # noqa
-                "required": False,
-                "style": "form",
-                "explode": False,
-                "schema": {
-                    "type": "array",
-                    "minItems": 4,
-                    "maxItems": 6,
-                    "items": {
-                        "type": "number"
+            'crs': {
+                'name': 'crs',
+                'in': 'query',
+                'description': 'Indicates the coordinate reference system for the results.',  # noqa
+                'style': 'form',
+                'required': False,
+                'explode': False,
+                'schema': {
+                    'format': 'uri',
+                    'type': 'string'
+                }
+            },
+            'bbox': {
+                'name': 'bbox',
+                'in': 'query',
+                'description': 'Only features that have a geometry that intersects the bounding box are selected.'  # noqa
+                               'The bounding box is provided as four or six numbers, depending on whether the '  # noqa
+                               'coordinate reference system includes a vertical axis (height or depth).',  # noqa
+                'required': False,
+                'style': 'form',
+                'explode': False,
+                'schema': {
+                    'type': 'array',
+                    'minItems': 4,
+                    'maxItems': 6,
+                    'items': {
+                        'type': 'number'
                     }
                 }
             },
             'bbox-crs': {
                 'name': 'bbox-crs',
                 'in': 'query',
-                'description': 'Indicates the EPSG for the given bbox coordinates.',  # noqa
-                'required': False,
+                'description': 'Indicates the coordinate reference system for the given bbox coordinates.',  # noqa
                 'style': 'form',
+                'required': False,
                 'explode': False,
                 'schema': {
-                    'type': 'integer',
-                    'default': 4326
+                    'format': 'uri',
+                    'type': 'string'
                 }
             },
+            # FIXME: This is not compatible with the bbox-crs definition in
+            #        OGCAPI Features Part 2!
+            #        We need to change the mapscript provider and
+            #        get_collection_map() method in the API!
+            # 'bbox-crs': {
+            #     'name': 'bbox-crs',
+            #     'in': 'query',
+            #     'description': 'Indicates the EPSG for the given bbox coordinates.',  # noqa
+            #     'required': False,
+            #     'style': 'form',
+            #     'explode': False,
+            #     'schema': {
+            #         'type': 'integer',
+            #         'default': 4326
+            #     }
+            # },
             'offset': {
                 'name': 'offset',
                 'in': 'query',
@@ -535,8 +563,8 @@ def get_oas_30(cfg):
                         items_l,
                         {'$ref': '#/components/parameters/bbox'},
                         {'$ref': f"{OPENAPI_YAML['oapif-1']}#/components/parameters/limit"},  # noqa
-                        {'$ref': f"{OPENAPI_YAML['oapif-2']}#/components/parameters/crs"},  # noqa
-                        {'$ref': f"{OPENAPI_YAML['oapif-2']}#/components/parameters/bbox-crs"},  # noqa
+                        {'$ref': '#/components/parameters/crs'},  # noqa
+                        {'$ref': '#/components/parameters/bbox-crs'},  # noqa
                         coll_properties,
                         {'$ref': '#/components/parameters/vendorSpecificParameters'},  # noqa
                         {'$ref': '#/components/parameters/skipGeometry'},
@@ -659,7 +687,7 @@ def get_oas_30(cfg):
                     'operationId': f'get{name.capitalize()}Feature',
                     'parameters': [
                         {'$ref': f"{OPENAPI_YAML['oapif-1']}#/components/parameters/featureId"},  # noqa
-                        {'$ref': f"{OPENAPI_YAML['oapif-2']}#/components/parameters/crs"},  # noqa
+                        {'$ref': '#/components/parameters/crs'},  # noqa
                         {'$ref': '#/components/parameters/f'},
                         {'$ref': '#/components/parameters/lang'}
                     ],
@@ -754,7 +782,7 @@ def get_oas_30(cfg):
                         items_f,
                         items_l,
                         {'$ref': '#/components/parameters/bbox'},
-                        {'$ref': f"{OPENAPI_YAML['oapif-2']}#/components/parameters/bbox-crs"},  # noqa
+                        {'$ref': '#/components/parameters/bbox-crs'},  # noqa
                     ],
                     'responses': {
                         '200': {'$ref': f"{OPENAPI_YAML['oapif-1']}#/components/responses/Features"},  # noqa
