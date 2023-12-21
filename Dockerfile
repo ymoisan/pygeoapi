@@ -115,20 +115,18 @@ RUN \
     # && add-apt-repository ppa:ubuntugis/ubuntugis-unstable \
 
     # OGC schemas local setup
-
     && mkdir /schemas.opengis.net \
     && curl -O http://schemas.opengis.net/SCHEMAS_OPENGIS_NET.zip \
     && unzip ./SCHEMAS_OPENGIS_NET.zip "ogcapi/*" -d /schemas.opengis.net \
     && rm -f ./SCHEMAS_OPENGIS_NET.zip \
 
-        # Install remaining pygeoapi deps
+    # Install remaining pygeoapi deps
     && pip3 install -r requirements-docker.txt \
 
     # Install pygeoapi
     && pip3 install -e . \
 
     # Set default config and entrypoint for Docker Image
-
     && cp /pygeoapi/docker/default.config.yml /pygeoapi/local.config.yml \
     && cp /pygeoapi/docker/entrypoint.sh /entrypoint.sh  \
 
@@ -138,7 +136,6 @@ RUN \
     && chmod 666 /pygeoapi/local.openapi.yml \
 
     # Cleanup TODO: remove unused Locales and TZs
-
     && apt-get remove --purge -y gcc ${DEB_BUILD_DEPS} \
     && apt-get clean \
     && apt autoremove -y  \
