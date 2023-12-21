@@ -107,6 +107,7 @@ F_JSONLD = 'jsonld'
 F_GZIP = 'gzip'
 F_PNG = 'png'
 F_MVT = 'mvt'
+F_NETCDF = 'NetCDF'
 
 #: Formats allowed for ?f= requests (order matters for complex MIME types)
 FORMAT_TYPES = OrderedDict((
@@ -114,7 +115,8 @@ FORMAT_TYPES = OrderedDict((
     (F_JSONLD, 'application/ld+json'),
     (F_JSON, 'application/json'),
     (F_PNG, 'image/png'),
-    (F_MVT, 'application/vnd.mapbox-vector-tile')
+    (F_MVT, 'application/vnd.mapbox-vector-tile'),
+    (F_NETCDF, 'application/x-netcdf'),
 ))
 
 #: Locale used for system responses (e.g. exceptions)
@@ -641,16 +643,18 @@ class APIRequest:
 class API:
     """API object"""
 
-    def __init__(self, config):
+    def __init__(self, config, openapi):
         """
         constructor
 
         :param config: configuration dict
+        :param openapi: openapi dict
 
         :returns: `pygeoapi.API` instance
         """
 
         self.config = config
+        self.openapi = openapi
         self.api_headers = get_api_rules(self.config).response_headers
         self.base_url = get_base_url(self.config)
         self.prefetcher = UrlPrefetcher()
@@ -790,8 +794,8 @@ class API:
 
     @gzip
     @pre_process
-    def openapi(self, request: Union[APIRequest, Any],
-                openapi) -> Tuple[dict, int, str]:
+    def openapi_(self, request: Union[APIRequest, Any]) -> Tuple[
+                 dict, int, str]:
         """
         Provide OpenAPI document
 
@@ -821,10 +825,11 @@ class API:
 
         headers['Content-Type'] = 'application/vnd.oai.openapi+json;version=3.0'  # noqa
 
-        if isinstance(openapi, dict):
-            return headers, HTTPStatus.OK, to_json(openapi, self.pretty_print)
+        if isinstance(self.openapi, dict):
+            return headers, HTTPStatus.OK, to_json(self.openapi,
+                                                   self.pretty_print)
         else:
-            return headers, HTTPStatus.OK, openapi
+            return headers, HTTPStatus.OK, self.openapi
 
     @gzip
     @pre_process
@@ -1177,41 +1182,37 @@ class API:
 
             try:
                 edr = get_provider_by_type(v['providers'], 'edr')
+                p = load_plugin('provider', edr)
+            except ProviderConnectionError:
+                msg = 'connection error (check logs)'
+                return self.get_exception(
+                    HTTPStatus.INTERNAL_SERVER_ERROR, headers,
+                    request.format, 'NoApplicableCode', msg)
             except ProviderTypeError:
                 edr = None
 
-            if edr and dataset is not None:
+            if edr:
                 # TODO: translate
                 LOGGER.debug('Adding EDR links')
-                try:
-                    p = load_plugin('provider', get_provider_by_type(
-                        self.config['resources'][dataset]['providers'], 'edr'))
-                    parameters = p.get_fields()
-                    if parameters:
-                        collection['parameter-names'] = {}
-                        for f in parameters['field']:
-                            collection['parameter-names'][f['id']] = f
+                parameters = p.get_fields()
+                if parameters:
+                    collection['parameter_names'] = {}
+                    for f in parameters['field']:
+                        collection['parameter_names'][f['id']] = f
 
-                    for qt in p.get_query_types():
-                        collection['links'].append({
-                            'type': 'application/json',
-                            'rel': 'data',
-                            'title': f'{qt} query for this collection as JSON',
-                            'href': f'{self.get_collections_url()}/{k}/{qt}?f={F_JSON}'  # noqa
-                        })
-                        collection['links'].append({
-                            'type': FORMAT_TYPES[F_HTML],
-                            'rel': 'data',
-                            'title': f'{qt} query for this collection as HTML',
-                            'href': f'{self.get_collections_url()}/{k}/{qt}?f={F_HTML}'  # noqa
-                        })
-                except ProviderConnectionError:
-                    msg = 'connection error (check logs)'
-                    return self.get_exception(
-                        HTTPStatus.INTERNAL_SERVER_ERROR, headers,
-                        request.format, 'NoApplicableCode', msg)
-                except ProviderTypeError:
-                    pass
+                for qt in p.get_query_types():
+                    collection['links'].append({
+                        'type': 'application/json',
+                        'rel': 'data',
+                        'title': f'{qt} query for this collection as JSON',
+                        'href': f'{self.get_collections_url()}/{k}/{qt}?f={F_JSON}'  # noqa
+                    })
+                    collection['links'].append({
+                        'type': FORMAT_TYPES[F_HTML],
+                        'rel': 'data',
+                        'title': f'{qt} query for this collection as HTML',
+                        'href': f'{self.get_collections_url()}/{k}/{qt}?f={F_HTML}'  # noqa
+                    })
 
             if dataset is not None and k == dataset:
                 fcm = collection
@@ -1653,6 +1654,12 @@ class API:
                               select_properties=select_properties,
                               crs_transform_spec=crs_transform_spec,
                               q=q, language=prv_locale, filterq=filter_)
+        except ProviderInvalidQueryError as err:
+            LOGGER.error(err)
+            msg = f'query error: {err}'
+            return self.get_exception(
+                HTTPStatus.BAD_REQUEST, headers, request.format,
+                'InvalidQuery', msg)
         except ProviderConnectionError as err:
             LOGGER.error(err)
             msg = 'connection error (check logs)'
@@ -2074,6 +2081,12 @@ class API:
                               skip_geometry=skip_geometry,
                               q=q,
                               filterq=filter_)
+        except ProviderInvalidQueryError as err:
+            LOGGER.error(err)
+            msg = f'query error: {err}'
+            return self.get_exception(
+                HTTPStatus.BAD_REQUEST, headers, request.format,
+                'InvalidQuery', msg)
         except ProviderConnectionError as err:
             LOGGER.error(err)
             msg = 'connection error (check logs)'
@@ -2418,11 +2431,10 @@ class API:
         """
 
         query_args = {}
-        format_ = F_JSON
+        format_ = request.format or F_JSON
 
         # Force response content type and language (en-US only) headers
         headers = request.get_response_headers(SYSTEM_LOCALE,
-                                               FORMAT_TYPES[F_JSON],
                                                **self.api_headers)
 
         LOGGER.debug('Loading provider')
@@ -2484,10 +2496,7 @@ class API:
                 'InvalidParameterValue', msg)
 
         query_args['datetime_'] = datetime_
-
-        if 'f' in request.params:
-            # Format explicitly set using a query parameter
-            query_args['format_'] = format_ = request.format
+        query_args['format_'] = format_
 
         properties = request.params.get('properties')
         if properties:
@@ -3299,7 +3308,7 @@ class API:
                 if process is None:
                     p2.pop('inputs')
                     p2.pop('outputs')
-                    p2.pop('example')
+                    p2.pop('example', None)
 
                 p2['jobControlOptions'] = ['sync-execute']
                 if self.manager.is_async:
@@ -3755,8 +3764,8 @@ class API:
                 HTTPStatus.BAD_REQUEST, headers, request.format,
                 'InvalidParameterValue', msg)
 
-        LOGGER.debug('Processing parameter-name parameter')
-        parameternames = request.params.get('parameter-name') or []
+        LOGGER.debug('Processing parameter_names parameter')
+        parameternames = request.params.get('parameter_names') or []
         if isinstance(parameternames, str):
             parameternames = parameternames.split(',')
 
@@ -3832,7 +3841,7 @@ class API:
 
         if parameternames and not any((fld['id'] in parameternames)
                                       for fld in p.get_fields()['field']):
-            msg = 'Invalid parameter-name'
+            msg = 'Invalid parameter_names'
             return self.get_exception(
                 HTTPStatus.BAD_REQUEST, headers, request.format,
                 'InvalidParameterValue', msg)
@@ -3853,6 +3862,11 @@ class API:
 
         try:
             data = p.query(**query_args)
+        except ProviderInvalidQueryError as err:
+            msg = f'query error: {err}'
+            return self.get_exception(
+                HTTPStatus.BAD_REQUEST, headers, request.format,
+                'InvalidQuery', msg)
         except ProviderNoDataError:
             msg = 'No data found'
             return self.get_exception(
